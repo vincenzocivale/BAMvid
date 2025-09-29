@@ -20,7 +20,7 @@ from .docker_manager import DockerManager
 
 logger = logging.getLogger(__name__)
 
-class MemvidEncoder:
+class BamvidEncoder:
     """
     Unified MemvidEncoder with clean separation between encoding logic and Docker management.
     Supports both native OpenCV encoding and FFmpeg encoding (native or Docker-based).
@@ -47,112 +47,19 @@ class MemvidEncoder:
         self.chunks.extend(chunks)
         logger.info(f"Added {len(chunks)} chunks. Total: {len(self.chunks)}")
 
-    def add_text(self, text: str, chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_OVERLAP):
+    def add_bam(self, bam_content: str, chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_OVERLAP):
         """
-        Add text and automatically chunk it
+        Add BAM and automatically chunk it
 
         Args:
-            text: Text to chunk and add
+            bam_content: Text to chunk and add
             chunk_size: Target chunk size
             overlap: Overlap between chunks
         """
-        chunks = chunk_text(text, chunk_size, overlap)
+        chunks = chunk_text(bam_content, chunk_size, overlap)
         self.add_chunks(chunks)
 
-    def add_pdf(self, pdf_path: str, chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_OVERLAP):
-        """
-        Extract text from PDF and add as chunks
-
-        Args:
-            pdf_path: Path to PDF file
-            chunk_size: Target chunk size
-            overlap: Overlap between chunks
-        """
-        try:
-            import PyPDF2
-        except ImportError:
-            raise ImportError("PyPDF2 is required for PDF support. Install with: pip install PyPDF2")
-
-        if not Path(pdf_path).exists():
-            raise FileNotFoundError(f"PDF file not found: {pdf_path}")
-
-        text = ""
-        with open(pdf_path, 'rb') as file:
-            pdf_reader = PyPDF2.PdfReader(file)
-            num_pages = len(pdf_reader.pages)
-
-            logger.info(f"Extracting text from {num_pages} pages of {Path(pdf_path).name}")
-
-            for page_num in range(num_pages):
-                page = pdf_reader.pages[page_num]
-                page_text = page.extract_text()
-                text += page_text + "\n\n"
-
-        if text.strip():
-            self.add_text(text, chunk_size, overlap)
-            logger.info(f"Added PDF content: {len(text)} characters from {Path(pdf_path).name}")
-        else:
-            logger.warning(f"No text extracted from PDF: {pdf_path}")
-
-    def add_epub(self, epub_path: str, chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_OVERLAP):
-        """
-        Extract text from EPUB and add as chunks
-
-        Args:
-            epub_path: Path to EPUB file
-            chunk_size: Target chunk size
-            overlap: Overlap between chunks
-        """
-        try:
-            import ebooklib
-            from ebooklib import epub
-            from bs4 import BeautifulSoup
-        except ImportError:
-            raise ImportError("ebooklib and beautifulsoup4 are required for EPUB support. Install with: pip install ebooklib beautifulsoup4")
-
-        if not Path(epub_path).exists():
-            raise FileNotFoundError(f"EPUB file not found: {epub_path}")
-
-        try:
-            book = epub.read_epub(epub_path)
-            text_content = []
-
-            logger.info(f"Extracting text from EPUB: {Path(epub_path).name}")
-
-            # Extract text from all document items
-            for item in book.get_items():
-                if item.get_type() == ebooklib.ITEM_DOCUMENT:
-                    # Parse HTML content
-                    soup = BeautifulSoup(item.get_content(), 'html.parser')
-
-                    # Remove script and style elements
-                    for script in soup(["script", "style"]):
-                        script.decompose()
-
-                    # Get text and clean it up
-                    text = soup.get_text()
-
-                    # Clean up whitespace
-                    lines = (line.strip() for line in text.splitlines())
-                    chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-                    text = ' '.join(chunk for chunk in chunks if chunk)
-
-                    if text.strip():
-                        text_content.append(text)
-
-            # Combine all text
-            full_text = "\n\n".join(text_content)
-
-            if full_text.strip():
-                self.add_text(full_text, chunk_size, overlap)
-                logger.info(f"Added EPUB content: {len(full_text)} characters from {Path(epub_path).name}")
-            else:
-                logger.warning(f"No text extracted from EPUB: {epub_path}")
-
-        except Exception as e:
-            logger.error(f"Error processing EPUB {epub_path}: {e}")
-            raise
-
+    
     def create_video_writer(self, output_path: str, codec: str = VIDEO_CODEC) -> cv2.VideoWriter:
         """
         Create OpenCV video writer for native encoding
@@ -532,7 +439,7 @@ class MemvidEncoder:
 
     @classmethod
     def from_file(cls, file_path: str, chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_OVERLAP,
-                  config: Optional[Dict[str, Any]] = None) -> 'MemvidEncoder':
+                  config: Optional[Dict[str, Any]] = None) -> 'BamvidEncoder':
         """
         Create encoder from text file
 
@@ -550,12 +457,12 @@ class MemvidEncoder:
         with open(file_path, 'r', encoding='utf-8') as f:
             text = f.read()
 
-        encoder.add_text(text, chunk_size, overlap)
+        encoder.add_bam(text, chunk_size, overlap)
         return encoder
 
     @classmethod
     def from_documents(cls, documents: List[str], chunk_size: int = DEFAULT_CHUNK_SIZE, overlap: int = DEFAULT_OVERLAP,
-                       config: Optional[Dict[str, Any]] = None) -> 'MemvidEncoder':
+                       config: Optional[Dict[str, Any]] = None) -> 'BamvidEncoder':
         """
         Create encoder from list of documents
 
@@ -571,6 +478,6 @@ class MemvidEncoder:
         encoder = cls(config)
 
         for doc in documents:
-            encoder.add_text(doc, chunk_size, overlap)
+            encoder.add_bam(doc, chunk_size, overlap)
 
         return encoder

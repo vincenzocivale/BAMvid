@@ -228,16 +228,14 @@ def batch_extract_and_decode(video_path: str, frame_numbers: List[int],
             result[frame_num] = data
     
     return result
-
+    
 
 def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
     """
-    Split text into overlapping chunks
+    Chunk the content of BAM file into a list of strings (each string is a row in the BAM file)
     
     Args:
-        text: Text to chunk
-        chunk_size: Target chunk size in characters
-        overlap: Overlap between chunks
+        text: content of BAM file
         
     Returns:
         List of text chunks

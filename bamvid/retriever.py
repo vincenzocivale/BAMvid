@@ -21,13 +21,13 @@ from .config import get_default_config
 logger = logging.getLogger(__name__)
 
 
-class MemvidRetriever:
+class BamvidRetriever:
     """Fast retrieval from QR code videos using semantic search"""
     
     def __init__(self, video_file: str, index_file: str, 
                  config: Optional[Dict[str, Any]] = None):
         """
-        Initialize MemvidRetriever
+        Initialize BamvidRetriever
         
         Args:
             video_file: Path to QR code video
